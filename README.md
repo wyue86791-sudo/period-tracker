@@ -1,9 +1,11 @@
-# 🩸 掌管月经的神
+# 🩸 掌管月经的神 (Period Tracker)
 
-> 一个 WorkBuddy Skill —— 用自然语言记录月经、分析周期、预测下一次。
+> An Agent Skill — 用自然语言记录月经、分析周期、预测下一次。
+>
+> 兼容 Claude Code / WorkBuddy / CodeBuddy 等支持 Agent Skills 规范的平台。
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python)
-![WorkBuddy](https://img.shields.io/badge/WorkBuddy-Skill-blueviolet)
+![Agent Skill](https://img.shields.io/badge/Agent-Skill-blueviolet)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## ✨ 功能亮点
@@ -13,10 +15,11 @@
 - 🔮 **加权预测** — 基于近期数据加权计算下次月经时间
 - 📱 **微信友好** — 精简文字报告，一屏看完
 - 🔒 **本地隐私** — 数据存在本机，绝不上传
+- 🌐 **跨平台** — 兼容所有支持 Agent Skills 规范的 AI 编程助手
 
 ## 📋 使用方式
 
-在 WorkBuddy 对话中直接说：
+在对话中直接说：
 
 | 你说 | 效果 |
 |------|------|
@@ -54,40 +57,49 @@
 
 ## 🚀 安装
 
-### 方式一：手动安装
-
-将本仓库克隆到 WorkBuddy 的 skills 目录：
+### Claude Code
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/period-tracker.git ~/.workbuddy/skills/period-tracker
+# 方式一：克隆到个人 skills 目录
+git clone https://github.com/wyue86791-sudo/period-tracker.git ~/.claude/skills/period-tracker
+
+# 方式二：克隆到项目 skills 目录
+git clone https://github.com/wyue86791-sudo/period-tracker.git .claude/skills/period-tracker
 ```
 
-### 方式二：WorkBuddy 导入
+### WorkBuddy / CodeBuddy
 
-1. 打开 WorkBuddy → 设置 → Skills 管理
-2. 点击「从 Git 仓库导入」
-3. 粘贴本仓库地址
+```bash
+# 方式一：克隆
+git clone https://github.com/wyue86791-sudo/period-tracker.git ~/.workbuddy/skills/period-tracker
 
-### 方式三：ZIP 安装
+# 方式二：WorkBuddy 界面导入
+# 设置 → Skills 管理 → 从 Git 仓库导入 → 粘贴本仓库地址
+```
 
-下载 Release 中的 zip 文件，解压到 `~/.workbuddy/skills/period-tracker/`
+### 其他支持 Agent Skills 的平台
+
+将本仓库克隆到对应平台的 skills 目录即可。脚本使用相对路径，无需额外配置。
 
 ## 📁 文件结构
 
 ```
 period-tracker/
-├── SKILL.md          # Skill 定义（WorkBuddy 读取）
+├── SKILL.md          # Skill 定义（Agent Skills 标准格式）
 ├── README.md         # 说明文档
+├── LICENSE           # MIT License
 ├── scripts/
-│   └── period.py     # 核心脚本
-└── data/             # 数据目录（自动创建）
-    └── records.json  # 记录文件（.gitignore 忽略）
+│   └── period.py     # 核心脚本（Python 3.9+，零依赖）
+└── data/             # 数据目录（自动创建，已 gitignore）
+    └── records.json  # 记录文件
 ```
 
 ## ⚙️ 技术细节
 
 - **语言**: Python 3.9+（无第三方依赖）
+- **规范**: [Agent Skills Specification](https://agentskills.io/specification)
 - **数据格式**: JSON
+- **路径**: 自动检测脚本所在目录，跨平台通用
 - **日期支持**: `YYYYMMDD`、`YYMMDD`、`YYYY-MM-DD`、`MM-DD`、`M月D日`
 - **预测算法**: 加权移动平均（近期权重更高）
 - **防重复**: 3天内重复记录自动忽略

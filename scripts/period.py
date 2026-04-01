@@ -6,7 +6,10 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-DATA_DIR = os.path.expanduser("~/.workbuddy/skills/period-tracker/data")
+# 跨平台路径：自动检测脚本所在目录，数据存在同级 ../data/
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SKILL_DIR = os.path.dirname(SCRIPT_DIR)
+DATA_DIR = os.path.join(SKILL_DIR, "data")
 DATA_FILE = os.path.join(DATA_DIR, "records.json")
 
 
