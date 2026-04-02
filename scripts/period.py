@@ -110,8 +110,17 @@ def cmd_analyze():
     lines.append(f"🩸 周期报告（{total}次记录）")
     lines.append("")
 
-    # --- 记录列表 & 周期计算 ---
+    # --- 先算所有周期 ---
     cycles = []
+    for i in range(1, len(recent)):
+        prev_dt = datetime.fromisoformat(recent[i - 1]["start"])
+        cur_dt = datetime.fromisoformat(recent[i]["start"])
+        cycles.append((cur_dt - prev_dt).days)
+
+    # 总体平均值
+    avg_cycle_all = sum(cycles) / len(cycles) if cycles else 0
+
+    # --- 记录列表（统一跟总体平均比较）---
     for i, rec in enumerate(recent):
         dt = datetime.fromisoformat(rec["start"])
         date_short = dt.strftime("%y.%m.%d")
@@ -119,22 +128,14 @@ def cmd_analyze():
         if i == 0:
             lines.append(f"{date_short}")
         else:
-            prev_dt = datetime.fromisoformat(recent[i - 1]["start"])
-            cycle = (dt - prev_dt).days
-            cycles.append(cycle)
-
-            # 与平均周期比较
-            if len(cycles) >= 2:
-                avg_so_far = sum(cycles[:-1]) / len(cycles[:-1])
-                diff = cycle - avg_so_far
-                if abs(diff) < 1:
-                    mark = "•"
-                elif diff > 0:
-                    mark = f"+{abs(diff):.0f}天"
-                else:
-                    mark = f"-{abs(diff):.0f}天"
-            else:
+            cycle = cycles[i - 1]
+            diff = cycle - avg_cycle_all
+            if abs(diff) < 1:
                 mark = "•"
+            elif diff > 0:
+                mark = f"+{diff:.0f}天"
+            else:
+                mark = f"{diff:.0f}天"
 
             lines.append(f"{date_short}  {cycle}天 {mark}")
 
@@ -162,18 +163,50 @@ def cmd_analyze():
         elif avg_cycle > 38:
             lines.append("⚠️ 平均周期偏长（正常范围24~38天），建议关注")
 
-        # 预测（用加权平均 + 差值范围）
+        # 预测（趋势分析 + 加权平均混合）
         last_dt = datetime.fromisoformat(recent[-1]["start"])
-        if len(cycles) >= 3:
-            weights = list(range(1, len(cycles) + 1))
-            weighted_avg = sum(c * w for c, w in zip(cycles, weights)) / sum(weights)
+        n = len(cycles)
+
+        # 加权平均（近期权重大）
+        weights = list(range(1, n + 1))
+        weighted_avg = sum(c * w for c, w in zip(cycles, weights)) / sum(weights)
+
+        # 线性趋势分析（最小二乘法）
+        if n >= 4:
+            x_mean = (n - 1) / 2  # 0,1,...,n-1 的均值
+            y_mean = avg_cycle
+            numerator = sum((i - x_mean) * (cycles[i] - y_mean) for i in range(n))
+            denominator = sum((i - x_mean) ** 2 for i in range(n))
+            if denominator != 0:
+                slope = numerator / denominator
+                intercept = y_mean - slope * x_mean
+                trend_next = intercept + slope * n  # 外推下一个点
+                # 混合：趋势60% + 加权平均40%
+                predicted_cycle = trend_next * 0.6 + weighted_avg * 0.4
+            else:
+                slope = 0
+                predicted_cycle = weighted_avg
         else:
-            weighted_avg = avg_cycle
+            slope = 0
+            predicted_cycle = weighted_avg
+
+        # 趋势说明
+        if n >= 4:
+            if slope < -0.5:
+                trend_text = "📉 近期趋势：周期在缩短"
+            elif slope > 0.5:
+                trend_text = "📈 近期趋势：周期在变长"
+            else:
+                trend_text = "➡️ 近期趋势：基本稳定"
+            lines.append(trend_text)
+
+        # 防止预测值跑偏（限制在历史最小~最大范围附近）
+        predicted_cycle = max(min_cycle - 3, min(max_cycle + 3, predicted_cycle))
 
         half_range = cycle_range / 2
-        predicted_dt = last_dt + timedelta(days=round(weighted_avg))
-        early_dt = last_dt + timedelta(days=round(weighted_avg - half_range))
-        late_dt = last_dt + timedelta(days=round(weighted_avg + half_range))
+        predicted_dt = last_dt + timedelta(days=round(predicted_cycle))
+        early_dt = last_dt + timedelta(days=round(predicted_cycle - half_range))
+        late_dt = last_dt + timedelta(days=round(predicted_cycle + half_range))
 
         today = datetime.now()
         days_until = (predicted_dt - today).days
