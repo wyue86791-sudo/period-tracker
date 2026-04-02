@@ -128,13 +128,13 @@ def cmd_analyze():
                 avg_so_far = sum(cycles[:-1]) / len(cycles[:-1])
                 diff = cycle - avg_so_far
                 if abs(diff) < 1:
-                    mark = "🟢"
+                    mark = "•"
                 elif diff > 0:
                     mark = f"+{abs(diff):.0f}天"
                 else:
                     mark = f"-{abs(diff):.0f}天"
             else:
-                mark = "🟢"
+                mark = "•"
 
             lines.append(f"{date_short}  {cycle}天 {mark}")
 
@@ -143,22 +143,26 @@ def cmd_analyze():
         avg_cycle = sum(cycles) / len(cycles)
         min_cycle = min(cycles)
         max_cycle = max(cycles)
-        variance = sum((c - avg_cycle) ** 2 for c in cycles) / len(cycles)
-        std_dev = variance ** 0.5
+        cycle_range = max_cycle - min_cycle  # FIGO标准：最长-最短差值
 
-        if std_dev <= 2:
+        # 规律性判断（基于FIGO标准，差值阈值）
+        if cycle_range <= 3:
             reg = "✨很规律"
-        elif std_dev <= 4:
-            reg = "👍较规律"
-        elif std_dev <= 7:
-            reg = "📊有波动"
+        elif cycle_range <= 7:
+            reg = "👍基本规律"
         else:
-            reg = "⚠️波动大"
+            reg = "⚠️不规律"
 
         lines.append("")
         lines.append(f"📊 平均周期{avg_cycle:.0f}天 | {min_cycle}~{max_cycle}天 | {reg}")
 
-        # 预测
+        # 周期长度异常提示（FIGO正常范围: 24~38天）
+        if avg_cycle < 24:
+            lines.append("⚠️ 平均周期偏短（正常范围24~38天），建议关注")
+        elif avg_cycle > 38:
+            lines.append("⚠️ 平均周期偏长（正常范围24~38天），建议关注")
+
+        # 预测（用加权平均 + 差值范围）
         last_dt = datetime.fromisoformat(recent[-1]["start"])
         if len(cycles) >= 3:
             weights = list(range(1, len(cycles) + 1))
@@ -166,9 +170,10 @@ def cmd_analyze():
         else:
             weighted_avg = avg_cycle
 
+        half_range = cycle_range / 2
         predicted_dt = last_dt + timedelta(days=round(weighted_avg))
-        early_dt = last_dt + timedelta(days=round(weighted_avg - std_dev))
-        late_dt = last_dt + timedelta(days=round(weighted_avg + std_dev))
+        early_dt = last_dt + timedelta(days=round(weighted_avg - half_range))
+        late_dt = last_dt + timedelta(days=round(weighted_avg + half_range))
 
         today = datetime.now()
         days_until = (predicted_dt - today).days
